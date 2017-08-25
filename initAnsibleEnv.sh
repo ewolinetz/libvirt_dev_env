@@ -7,6 +7,9 @@ NODE_COUNT=1
 ISO_LOCATION="/var/lib/libvirt/images"
 IMAGE_LOCATION="/home/ewolinetz/images"
 IMAGE_SIZE="10G"
+VM_MEMORY="1024"
+VM_CORES="1"
+VM_THREADS="2"
 
 # check options to create multiple nodes/masters
 while getopts "m:n:" opt; do
@@ -67,18 +70,26 @@ if [[ -z "$(virsh net-list --name | grep example)"]]; then
   virsh net-start example
 fi
 
+createPIDs=()
 echo "Creating VMs..."
 for host in $HOSTLIST; do
 # Create the vms
+  sed "s,network  --hostname=.*,network  --hostname=${host}," ks.cfg > ${host}-ks.cfg
+
   virt-install --name ${host} \
-               --memory 1024 \
+               --memory $VM_MEMORY \
                --location $ISO_LOCATION/rhel-server-7.3-x86_64-dvd.iso \
-               --vcpus cores=1,threads=2 \
+               --vcpus cores=${VM_CORES},threads=${VM_THREADS} \
                --disk $IMAGE_LOCATION/${node} \
                --network network=example \
-               --initrd-inject ./ks.cfg \
-               --extra-args="ks=file:/ks.cfg console=tty0 console=ttyS0,115200n8"
+               --initrd-inject ./${host}-ks.cfg \
+               --extra-args="ks=file:/${host}-ks.cfg console=tty0 console=ttyS0,115200n8" &
+
+  createPIDs+=( $! )
 done
+
+wait ${createPIDs[@]}
+rm ./*-ks.cfg
 
 
 # check that all expected hosts are created and running...
