@@ -50,18 +50,35 @@ for node in $HOSTLIST; do
 
 done
 
-# use virt-manager to create nodes... wait here
-echo "Launching virt-manager..."
-virt-manager
-echo "Create following VMs:"
+# Set up virt network to use
+
+# First check if the example network is active
+if [[ -z "$(virsh net-list --name | grep example)"]]; then
+  # stop any that might currently be bound to the network
+  # -- this doesn't actually delete it
+  for network in "$(virsh net-list --name)"; do
+    virsh net-destroy $network
+  done
+
+  # if its not just inactive, create it
+  [[ -z "$(virsh net-list --inactive | grep example)" ]] && virsh net-define example_network.xml
+
+  virsh net-autostart example
+  virsh net-start example
+fi
+
+echo "Creating VMs..."
 for host in $HOSTLIST; do
-  echo "  * $host"
-
-# Create the images
-# virt-install --name ${host} --memory 1024 --location $ISO_LOCATION/rhel-server-7.3-x86_64-dvd.iso --vcpus cores=1,threads=2 --disk $IMAGE_LOCATION/${node} --network network=example --initrd-inject ./ks.cfg --extra-args="ks=file:/ks.cfg console=tty0 console=ttyS0,115200n8"
-
+# Create the vms
+  virt-install --name ${host} \
+               --memory 1024 \
+               --location $ISO_LOCATION/rhel-server-7.3-x86_64-dvd.iso \
+               --vcpus cores=1,threads=2 \
+               --disk $IMAGE_LOCATION/${node} \
+               --network network=example \
+               --initrd-inject ./ks.cfg \
+               --extra-args="ks=file:/ks.cfg console=tty0 console=ttyS0,115200n8"
 done
-read -rsp $"and then press any key to continue..." -n1 key
 
 
 # check that all expected hosts are created and running...
