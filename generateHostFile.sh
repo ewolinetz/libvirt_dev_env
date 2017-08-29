@@ -1,6 +1,6 @@
 #! /bin/bash
 
-set -x
+set -e
 
 ## Run this as root
 [ "$(whoami)" != "root" ] && echo "Running as root is required" && exit 1
