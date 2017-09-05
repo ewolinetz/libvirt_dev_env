@@ -15,3 +15,12 @@ echo "Starting shutdown vms..."
 for vm in `virsh list --name --all`; do
   [[ ! $RUNNING =~ "$vm" ]] && virsh start $vm
 done
+
+for vm in `virsh list --name`; do
+  echo "Waiting for $vm to be ready..."
+  ssh -o ConnectTimeout=5 root@${vm} true 2>/dev/null
+  while [[ $? -eq 255 ]]; do
+    sleep 1
+    ssh -o ConnectTimeout=5 root@${vm} true 2>/dev/null
+  done
+done
